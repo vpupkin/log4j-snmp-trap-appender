@@ -49,9 +49,12 @@
 
 package org.apache.log4j.ext;
 
-import org.apache.log4j.*;
-import org.apache.log4j.spi.*;
-import org.apache.log4j.helpers.*;
+import org.apache.log4j.AppenderSkeleton;
+import org.apache.log4j.Layout;
+import org.apache.log4j.PatternLayout;
+import org.apache.log4j.helpers.OptionConverter;
+import org.apache.log4j.spi.ErrorCode;
+import org.apache.log4j.spi.LoggingEvent;
 
 /**
  * An appender to send formatted logging event strings to a specified managment
@@ -230,7 +233,6 @@ import org.apache.log4j.helpers.*;
  * 2003-07-05: mwm : some improvement in the exception handling of #loadImplementationClass<br>
  *
  * @author Mark Masterson (<a href="mailto:m.masterson@computer.org">m.masterson@computer.org</a>),
- * <a href="http://www.m2technologies.net/">http://www.m2technologies.net/</a>
  * @author <br>Thomas Muller (<a href="mailto:ttm@online.no">ttm@online.no</a>)
  * @author <br>Matt Monks (<a href="mailto:Matthew.Monks@netdecisions.com">Matthew.Monks@netdecisions.com</a>)
  */
@@ -243,7 +245,7 @@ public class SNMPTrapAppender extends AppenderSkeleton {
         private final long appenderLoadedTime = System.currentTimeMillis();
 
         public long getSysUpTime() {
-            return (System.currentTimeMillis() - appenderLoadedTime);
+            return System.currentTimeMillis() - appenderLoadedTime;
         }
     };
 
@@ -256,7 +258,7 @@ public class SNMPTrapAppender extends AppenderSkeleton {
     private int specificTrapType = 1;
     private String applicationTrapOID = "1.3.6.1.2.1.2.0.0.0.0";
     private String communityString = "public";
-    private long sysUpTime = 0;
+    private long sysUpTime;
     private String implementationClassName;
     private SysUpTimeResolver sysUpTimeResolver = DEFAULT_SYSUP_TIME_RESOLVER;
     private String forwardStackTraceWithTrap = FALSE;
@@ -271,6 +273,7 @@ public class SNMPTrapAppender extends AppenderSkeleton {
 
     /**
      * Construct the appender with the specified Layout.
+     * @param layoutValue a Layout
      */
     public SNMPTrapAppender(final Layout layoutValue) {
         super.layout = layoutValue;
@@ -284,19 +287,16 @@ public class SNMPTrapAppender extends AppenderSkeleton {
     }
 
     /**
-     * Uses an instance of {@link SnmpTrapSenderFacade} to send the String
-     * returned by Layout.format() as the message(s) of an SNMP trap.
-     * If the various properties have not been intialized, the defaults will
-     * be used.
+     * Uses an instance of {@link SnmpTrapSenderFacade} to send the String returned by Layout.format() as the message(s)
+     * of an SNMP trap. If the various properties have not been intialized, the defaults will be used.
      */
     protected void append(final LoggingEvent event) {
         //check pre-conditions
-        if (!this.isAsSevereAsThreshold(event.getLevel())) return;
-        if (null == this.getLayout()) {
-            errorHandler.error("No layout set for the Appender named ["
-                               +
-                               this.getName()
-                               + "]",
+        if (!isAsSevereAsThreshold(event.getLevel())) return;
+        if (null == getLayout()) {
+            errorHandler.error(new StringBuffer().append("No layout set for the Appender named [")
+                    .append(getName())
+                    .append(']').toString(),
                                null,
                                ErrorCode.MISSING_LAYOUT);
             return;
@@ -304,9 +304,9 @@ public class SNMPTrapAppender extends AppenderSkeleton {
         //Create and intialize the interface to SNMP -- will
         //use default values if none have been provided, which will,
         //in most cases, result in the trap being sent to dev(null)...
-        final SnmpTrapSenderFacade out = this.loadImplementationClass();
+        final SnmpTrapSenderFacade out = loadImplementationClass();
         if (null != out) {
-            if (0 == this.sysUpTime) this.sysUpTime = this.sysUpTimeResolver.getSysUpTime();
+            if (0 == sysUpTime) sysUpTime = sysUpTimeResolver.getSysUpTime();
             out.initialize(this);
             parseLoggingEventAndAddToTrap(event, out);
             //fire it off
@@ -315,9 +315,9 @@ public class SNMPTrapAppender extends AppenderSkeleton {
     }
 
     /**
-     * Load the concrete class specifed in the properties/config file that implements
-     * the SnmpTrapSenderFacade interface.  Logs an error using the ErrorHandler if there
-     * are problems, and returns null.
+     * Load the concrete class specifed in the properties/config file that implements the SnmpTrapSenderFacade
+     * interface.  Logs an error using the ErrorHandler if there are problems, and returns null.
+     *
      * @return an instance of an implementation of SnmpTrapSenderFacade or null if there was an Exception
      */
     private SnmpTrapSenderFacade loadImplementationClass() {
@@ -325,12 +325,12 @@ public class SNMPTrapAppender extends AppenderSkeleton {
         try {
             result = (SnmpTrapSenderFacade)
                     OptionConverter.instantiateByClassName(
-                            this.implementationClassName,
-                            Class.forName(this.implementationClassName),
+                            implementationClassName,
+                            Class.forName(implementationClassName),
                             null);
         } catch (Exception ex) {
-            errorHandler.error("Could not locate the implementation class - "
-                               + this.implementationClassName,
+            errorHandler.error(new StringBuffer().append("Could not locate the implementation class - ")
+                    .append(implementationClassName).toString(),
                                ex,
                                ErrorCode.GENERIC_FAILURE);
         }
@@ -338,40 +338,40 @@ public class SNMPTrapAppender extends AppenderSkeleton {
     }
 
     /**
-     * Get the formatted logging event, and bind it to the SNMP PDU
-     * as a Varbind, with the applicationTrapOID as the name, and the
-     * logging event string as the value...
-     * @param event
-     * @param out
+     * Get the formatted logging event, and bind it to the SNMP PDU as a Varbind, with the applicationTrapOID as the
+     * name, and the logging event string as the value...
+     *
+     * @param event to log
+     * @param out logging target
      */
     private void parseLoggingEventAndAddToTrap(final LoggingEvent event,
                                                final SnmpTrapSenderFacade out) {
-        final PatternLayout pl = (PatternLayout) this.getLayout();
+        final PatternLayout pl = (PatternLayout) getLayout();
         if (pl instanceof SnmpDelimitedConversionPatternLayout)
             ((SnmpDelimitedConversionPatternLayout) pl).formatMultipleVarBinds(
                     event, out);
         else
-            out.addTrapMessageVariable(this.applicationTrapOID,
+            out.addTrapMessageVariable(applicationTrapOID,
                                        pl.format(event));
         handleThrowable(event, out);
     }
 
     /**
-     * If the Layout associated with this appender does not parse Throwables, then this appender
-     * may do so.  If the parameter "ForwardStackTraceWithTrap" is set to "true" in the
-     * configuration script, each element of the stack trace of the Throwable will be added
-     * as a separate VarBind to the trap PDU.
-     * @param event
-     * @param out
+     * If the Layout associated with this appender does not parse Throwables, then this appender may do so.  If the
+     * parameter "ForwardStackTraceWithTrap" is set to "true" in the configuration script, each element of the stack
+     * trace of the Throwable will be added as a separate VarBind to the trap PDU.
+     *
+     * @param event to log
+     * @param out logging target
      */
     private void handleThrowable(final LoggingEvent event,
                                  final SnmpTrapSenderFacade out) {
-        if (this.getLayout().ignoresThrowable()
-                && TRUE.equals(this.getForwardStackTraceWithTrap())) {
+        if (getLayout().ignoresThrowable()
+            && TRUE.equals(getForwardStackTraceWithTrap())) {
             final String[] stackTrace = event.getThrowableStrRep();
             if (null != stackTrace) {
                 for (int i = 0; i < stackTrace.length; i++) {
-                    out.addTrapMessageVariable(this.applicationTrapOID,
+                    out.addTrapMessageVariable(applicationTrapOID,
                                                stackTrace[i]);
                 }
             }
@@ -379,9 +379,10 @@ public class SNMPTrapAppender extends AppenderSkeleton {
     }
 
     /**
-     * Tests if the String parameter is #equalsIgnoreCase to one of the constants
-     * TRUE or FALSE defined for this class.
-     * @param value
+     * Tests if the String parameter is #equalsIgnoreCase to one of the constants TRUE or FALSE defined for this class.
+     *
+     * @param value to be tested for equivalency
+     *
      * @return true if the parameter matches either of the two constants, otherwise false.
      */
     private static boolean testStringForBooleanEquivalency(final String value) {
@@ -392,115 +393,106 @@ public class SNMPTrapAppender extends AppenderSkeleton {
      * Sets the state of the Appender to "closed".
      */
     public void close() {
-        if (!this.closed) this.closed = true;
+        if (!closed) closed = true;
     }
 
     /**
-     * Get the numeric, dotted-decimal IP address of the remote host that
-     * traps will be sent to, as a String.
+     * Get the numeric, dotted-decimal IP address of the remote host that traps will be sent to, as a String.
+     * @return numeric IP address of the trap target
      */
     public String getManagementHost() {
-        return this.managementHost;
+        return managementHost;
     }
 
     /**
      * Set the IP address of the remote host that traps should be sent to.
      *
-     * @param managementHostValue -- the IP address of the remote
-     * host, in numeric, dotted-decimal format, as a String.
-     * E.g. "10.255.255.1"
+     * @param managementHostValue -- the IP address of the remote host, in numeric, dotted-decimal format, as a String.
+     *                            E.g. "10.255.255.1"
      */
     public void setManagementHost(final String managementHostValue) {
-        this.managementHost = managementHostValue;
+        managementHost = managementHostValue;
     }
 
     /**
-     * Get the port used on the remote host to listen for SNMP traps.  The
-     * standard is 162.
+     * Get the port used on the remote host to listen for SNMP traps.  The standard is 162.
+     * @return target trap port
      */
     public int getManagementHostTrapListenPort() {
-        return this.managementHostTrapListenPort;
+        return managementHostTrapListenPort;
     }
 
     /**
-     * Set the port used on the remote host to listen for SNMP traps.  The
-     * standard is 162.
+     * Set the port used on the remote host to listen for SNMP traps.  The standard is 162.
      *
-     * @param managementHostTrapListenPortValue -- any valid TCP/IP port
+     * @param managementHostTrapListenPortValue
+     *         -- any valid TCP/IP port
      */
     public void setManagementHostTrapListenPort(
             final int managementHostTrapListenPortValue) {
-        this.managementHostTrapListenPort = managementHostTrapListenPortValue;
+        managementHostTrapListenPort = managementHostTrapListenPortValue;
     }
 
     /**
      * Get the enterprise OID that will be sent in the SNMP PDU.
      *
-     * @return A String, formatted as an OID
-     * E.g. "1.3.6.1.2.1.1.2.0" -- this OID would point to the standard
-     * sysObjectID of the "systemName" node of the standard "system" MIB.
+     * @return A String, formatted as an OID E.g. "1.3.6.1.2.1.1.2.0" -- this OID would point to the standard
+     *         sysObjectID of the "systemName" node of the standard "system" MIB.
      */
     public String getEnterpriseOID() {
-        return this.enterpriseOID;
+        return enterpriseOID;
     }
 
     /**
      * Set the enterprise OID that will be sent in the SNMP PDU.
      *
-     * @param enterpriseOIDValue -- formatted as an OID
-     * E.g. "1.3.6.1.2.1.1.2.0" -- this OID would point to the standard
-     * sysObjectID of the "systemName" node of the standard "system" MIB.
-     * <p>
-     * This is the default value, if none is provided.
-     * <p>
-     * If you want(need) to use custom OIDs (such as ones from the
-     * "private.enterprises" node -- "1.3.6.1.4.1.x.x.x..."), you always need
-     * to provide the <b>fully qualified</b> OID as the parameter to this
-     * method.
+     * @param enterpriseOIDValue -- formatted as an OID E.g. "1.3.6.1.2.1.1.2.0" -- this OID would point to the standard
+     *                           sysObjectID of the "systemName" node of the standard "system" MIB.
+     *                           <p/>
+     *                           This is the default value, if none is provided.
+     *                           <p/>
+     *                           If you want(need) to use custom OIDs (such as ones from the "private.enterprises" node
+     *                           -- "1.3.6.1.4.1.x.x.x..."), you always need to provide the <b>fully qualified</b> OID
+     *                           as the parameter to this method.
      */
     public void setEnterpriseOID(final String enterpriseOIDValue) {
-        this.enterpriseOID = enterpriseOIDValue;
+        enterpriseOID = enterpriseOIDValue;
     }
 
     /**
-     * Get the IP address of the host that is using this appender to send
-     * SNMP traps.
+     * Get the IP address of the host that is using this appender to send SNMP traps.
+     * @return IP address of the local host
      */
     public String getLocalIPAddress() {
-        return this.localIPAddress;
+        return localIPAddress;
     }
 
     /**
-     * Set the IP address of the host that is using this appender to send
-     * SNMP traps.  This address will be encoded in the SNMP PDU, and used
-     * to provide things like the "agent"'s IP address.
+     * Set the IP address of the host that is using this appender to send SNMP traps.  This address will be encoded in
+     * the SNMP PDU, and used to provide things like the "agent"'s IP address.
      *
-     * @param localIPAddressValue -- an IP address, as a String, in
-     * numeric, dotted decimal format.  E.g. "10.255.255.2".
+     * @param localIPAddressValue -- an IP address, as a String, in numeric, dotted decimal format.  E.g.
+     *                            "10.255.255.2".
      */
     public void setLocalIPAddress(final String localIPAddressValue) {
-        this.localIPAddress = localIPAddressValue;
+        localIPAddress = localIPAddressValue;
     }
 
     /**
      * Get the generic trap type set for this SNMP PDU.
+     * @return the trap type currently set
      */
     public int getGenericTrapType() {
-        return this.genericTrapType;
+        return genericTrapType;
     }
 
     /**
-     * Set the generic trap type for this SNMP PDU.  The allowed values for
-     * this attribute are a part of the SNMP standard.
+     * Set the generic trap type for this SNMP PDU.  The allowed values for this attribute are a part of the SNMP
+     * standard.
      *
-     * @param genericTrapTypeValue -- One of the following values:<p>
-     *        0 -- cold start<br>
-     *        1 -- warm start<br>
-     *        2 -- link down<br>
-     *        3 -- link up<br>
-     *        4 -- authentification failure<br>
-     *        5 -- EGP neighbor loss<br>
-     *        6 -- enterprise specific<br>
+     * @param genericTrapTypeValue -- One of the following values:<p> 0 -- cold start<br> 1 -- warm start<br> 2 -- link
+     *                             down<br> 3 -- link up<br> 4 -- authentification failure<br> 5 -- EGP neighbor
+     *                             loss<br> 6 -- enterprise specific<br>
      */
     public void setGenericTrapType(final int genericTrapTypeValue) {
         //to avoid confusing the Log4J framework code that calls this setter
@@ -510,137 +502,131 @@ public class SNMPTrapAppender extends AppenderSkeleton {
         //of the allowed range will result in a deformed SNMP PDU -- such
         //a PDU, in turn, will be silently ignored by most SNMP trap
         //receivers -- IOW, the trap will go to dev>null.
-        this.genericTrapType = genericTrapTypeValue;
+        genericTrapType = genericTrapTypeValue;
     }
 
     /**
      * Get the specific trap type set for this SNMP PDU.
+     * @return specific trap type currently set
      */
     public int getSpecificTrapType() {
-        return this.specificTrapType;
+        return specificTrapType;
     }
 
     /**
-     * Set the specific trap type for this SNMP PDU.  Can be used for
-     * application and/or enterprise specific values.
+     * Set the specific trap type for this SNMP PDU.  Can be used for application and/or enterprise specific values.
      *
-     * @param specificTrapTypeValue -- any value within the range defined
-     * for an INTEGER in the ASN.1/BER notation; i.e. -128 to 127
+     * @param specificTrapTypeValue -- any value within the range defined for an INTEGER in the ASN.1/BER notation; i.e.
+     *                              -128 to 127
      */
     public void setSpecificTrapType(final int specificTrapTypeValue) {
-        this.specificTrapType = specificTrapTypeValue;
+        specificTrapType = specificTrapTypeValue;
     }
 
     /**
      * Get the trap OID that will be sent in the SNMP PDU for this app.
+     * @return application OID currently set
      */
     public String getApplicationTrapOID() {
-        return this.applicationTrapOID;
+        return applicationTrapOID;
     }
 
     /**
      * Set the trap OID that will be sent in the SNMP PDU for this app.
      *
-     * @param applicationTrapOIDValue -- formatted as an OID
-     * E.g. "1.3.6.1.2.1.2.0.0.0.0" -- this OID would point to the standard
-     * sysObjectID of the "systemName" node of the standard "system" MIB.
-     * <p>
-     * This is the default value, if none is provided.
-     * <p>
-     * If you want(need) to use custom OIDs (such as ones from the
-     * "private.enterprises" node -- "1.3.6.1.4.1.x.x.x..."), you always need
-     * to provide the <b>fully qualified</b> OID as the parameter to this
-     * method.
+     * @param applicationTrapOIDValue -- formatted as an OID E.g. "1.3.6.1.2.1.2.0.0.0.0" -- this OID would point to the
+     *                                standard sysObjectID of the "systemName" node of the standard "system" MIB.
+     *                                <p/>
+     *                                This is the default value, if none is provided.
+     *                                <p/>
+     *                                If you want(need) to use custom OIDs (such as ones from the "private.enterprises"
+     *                                node -- "1.3.6.1.4.1.x.x.x..."), you always need to provide the <b>fully
+     *                                qualified</b> OID as the parameter to this method.
      */
     public void setApplicationTrapOID(final String applicationTrapOIDValue) {
-        this.applicationTrapOID = applicationTrapOIDValue;
+        applicationTrapOID = applicationTrapOIDValue;
     }
 
     /**
-     * Get the community string set for the SNMP session this appender will
-     * use.
+     * Get the community string set for the SNMP session this appender will use.
+     * @return the current community string
      */
     public String getCommunityString() {
-        return this.communityString;
+        return communityString;
     }
 
     /**
-     * Set the community string set for the SNMP session this appender will
-     * use.  The community string is used by SNMP (prior to v.3) as a sort of
-     * plain-text password.
+     * Set the community string set for the SNMP session this appender will use.  The community string is used by SNMP
+     * (prior to v.3) as a sort of plain-text password.
      *
-     * @param communityStringValue -- E.g. "public".  This is the
-     * default, if none is provided.
+     * @param communityStringValue -- E.g. "public".  This is the default, if none is provided.
      */
     public void setCommunityString(final String communityStringValue) {
-        this.communityString = communityStringValue;
+        communityString = communityStringValue;
     }
 
     /**
      * Get the value of the system up time that will be used for the SNMP PDU.
+     * @return current system up time
      */
     public long getSysUpTime() {
-        return this.sysUpTime;
+        return sysUpTime;
     }
 
     /**
      * Set the value of the system up time that will be used for the SNMP PDU.
-     * @deprecated Now using the excellent SysUpTimeResolver idea from Thomas Muller,
-     * but if you set this value in the properties file, the appender will use that
-     * value, to maintain backwards compatibility.
      *
-     * @param sysUpTimeValue -- this is meant to be the amount of time, in
-     * seconds, elapsed since the last re-start or re-initialization of the
-     * calling application.  Of course, to set this, your application needs
-     * to keep track of the value.  The default is 0, if none is provided.
+     * @param sysUpTimeValue -- this is meant to be the amount of time, in seconds, elapsed since the last re-start or
+     *                       re-initialization of the calling application.  Of course, to set this, your application
+     *                       needs to keep track of the value.  The default is 0, if none is provided.
+     *
+     * @deprecated Now using the excellent SysUpTimeResolver idea from Thomas Muller, but if you set this value in the
+     *             properties file, the appender will use that value, to maintain backwards compatibility.
      */
     public void setSysUpTime(final long sysUpTimeValue) {
-        this.sysUpTime = sysUpTimeValue;
+        sysUpTime = sysUpTimeValue;
     }
 
     /**
-     * Get the value of the port that will be used to send traps out from the
-     * local host.
+     * Get the value of the port that will be used to send traps out from the local host.
+     * @return local trap send port
      */
     public int getLocalTrapSendPort() {
-        return this.localTrapSendPort;
+        return localTrapSendPort;
     }
 
     /**
-     * Set the value of the port that will be used to send traps out from the
-     * local host.
+     * Set the value of the port that will be used to send traps out from the local host.
      *
-     * @param localTrapSendPortValue -- any valid IP port number.  The default
-     * is 161, if none is provided.
+     * @param localTrapSendPortValue -- any valid IP port number.  The default is 161, if none is provided.
      */
     public void setLocalTrapSendPort(final int localTrapSendPortValue) {
-        this.localTrapSendPort = localTrapSendPortValue;
+        localTrapSendPort = localTrapSendPortValue;
     }
 
     /**
-     * Get the value of the concrete class that implements the SnmpTrapSenderFacade
-     * interface.
+     * Get the value of the concrete class that implements the SnmpTrapSenderFacade interface.
+     * @return the FQN of the class currently configured as the delegate for sending traps
      */
     public String getImplementationClassName() {
-        return this.implementationClassName;
+        return implementationClassName;
     }
 
     /**
-     * Set the value of the concrete class that implements the SnmpTrapSenderFacade
-     * interface.
+     * Set the value of the concrete class that implements the SnmpTrapSenderFacade interface.
      *
-     * @param implementationClassNameValue -- a String containing the fully
-     * qualified class name of the concrete implementation class, e.g.
-     * "org.apache.log4j.ext.JoeSNMPTrapSender".
+     * @param implementationClassNameValue -- a String containing the fully qualified class name of the concrete
+     *                                     implementation class, e.g. "org.apache.log4j.ext.JoeSNMPTrapSender".
      */
     public void setImplementationClassName(
             final String implementationClassNameValue) {
-        this.implementationClassName = implementationClassNameValue;
+        implementationClassName = implementationClassNameValue;
     }
 
     /**
-     * Gets the concrete instance of an implementation of the SysUpTimeResolver interface that is being used
-     * by the appender.
+     * Gets the concrete instance of an implementation of the SysUpTimeResolver interface that is being used by the
+     * appender.
+     *
      * @return a concrete instance of an implementation of the SysUpTimeResolver interface
      */
     public SysUpTimeResolver getSysUpTimeResolver() {
@@ -648,22 +634,23 @@ public class SNMPTrapAppender extends AppenderSkeleton {
     }
 
     /**
-     * See {@link SysUpTimeResolver}.  This method sets the resolver by passing the FQN of the class that
-     * implements the SysUpTimeResolver interface, as a String.
-     * @param value -- a String containing the fully qualified class name of the concrete implementation
-     * class, e.g. "org.apache.log4j.ext.MySysUpTimeResolver".
+     * See {@link SysUpTimeResolver}.  This method sets the resolver by passing the FQN of the class that implements the
+     * SysUpTimeResolver interface, as a String.
+     *
+     * @param value -- a String containing the fully qualified class name of the concrete implementation class, e.g.
+     *              "org.apache.log4j.ext.MySysUpTimeResolver".
      */
     public void setSysUpTimeResolver(final String value) {
-        this.sysUpTimeResolver = (SysUpTimeResolver) OptionConverter.instantiateByClassName(
+        sysUpTimeResolver = (SysUpTimeResolver) OptionConverter.instantiateByClassName(
                 value,
                 SysUpTimeResolver.class,
                 DEFAULT_SYSUP_TIME_RESOLVER);
     }
 
     /**
-     * Gets the flag that determines if the contents of the stack trace of any Throwable in the LoggingEvent
-     * should be added as VarBinds to the trap PDU.<br>
-     * Default is FALSE.
+     * Gets the flag that determines if the contents of the stack trace of any Throwable in the LoggingEvent should be
+     * added as VarBinds to the trap PDU.<br> Default is FALSE.
+     *
      * @return the current value of this flag.
      */
     public String getForwardStackTraceWithTrap() {
@@ -671,19 +658,19 @@ public class SNMPTrapAppender extends AppenderSkeleton {
     }
 
     /**
-     * Sets the flag that determines if the contents of the stack trace of any Throwable in the LoggingEvent
-     * should be added as VarBinds to the trap PDU.<br>
-     * Default is FALSE.  Allowed values are TRUE and FALSE.
-     * @param forwardStackTraceWithTrap
+     * Sets the flag that determines if the contents of the stack trace of any Throwable in the LoggingEvent should be
+     * added as VarBinds to the trap PDU.<br> Default is FALSE.  Allowed values are TRUE and FALSE.
+     *
+     * @param forwardStackTraceWithTrap true or false
      */
     public void setForwardStackTraceWithTrap(final String forwardStackTraceWithTrap) {
         if (testStringForBooleanEquivalency(forwardStackTraceWithTrap))
             this.forwardStackTraceWithTrap = forwardStackTraceWithTrap;
         else
             throw new IllegalArgumentException(
-                    "Value of forwardStackTraceWithTrap must be set to" +
-                    "TRUE or FALSE! Illegal value was:" +
-                    forwardStackTraceWithTrap);
+                    new StringBuffer().append("Value of forwardStackTraceWithTrap must be set to")
+                            .append("TRUE or FALSE! Illegal value was:")
+                            .append(forwardStackTraceWithTrap).toString());
     }
 
     public int getTrapVersion() {
