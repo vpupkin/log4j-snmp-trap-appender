@@ -67,5 +67,5 @@ public interface SysUpTimeResolver {
      * for a given application.
      * @return a milliseconds value as a long.
      */
-    public long getSysUpTime();
+    long getSysUpTime();
 }

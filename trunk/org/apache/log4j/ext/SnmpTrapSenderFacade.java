@@ -77,7 +77,7 @@ public interface SnmpTrapSenderFacade {
      * values needed to configure the trap sender will be extracted from the
      * Appender, via its getter methods.
      */
-    public void initialize(SNMPTrapAppender appender);
+    void initialize(SNMPTrapAppender appender);
 
     /**
      * Sends the PDU defined by the variables of the fields of this class.
@@ -85,7 +85,7 @@ public interface SnmpTrapSenderFacade {
      * called the initialization() method once, and the addTrapMessageVariable()
      * method one or more times.
      */
-    public void sendTrap();
+    void sendTrap();
 
     /**
      * Adds a new Varbind to the SNMP PDU.  The Varbind is made of the value

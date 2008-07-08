@@ -488,20 +488,16 @@ public class SNMPTrapAppender extends AppenderSkeleton {
 
     /**
      * Set the generic trap type for this SNMP PDU.  The allowed values for this attribute are a part of the SNMP
-     * standard.
+     * standard. To avoid confusing the Log4J framework code that calls this setter as part of the configuration
+     * process, I don't enforce the pre-condition (which is "0 >= genericTrapTypeValue <= 6") here.  You can pass in
+     * any value you like.  However, a value that is outside of the allowed range will result in a deformed SNMP PDU --
+     * such a PDU, in turn, will be silently ignored by most SNMP trap receivers -- IOW, the trap will go to dev>null.
      *
      * @param genericTrapTypeValue -- One of the following values:<p> 0 -- cold start<br> 1 -- warm start<br> 2 -- link
      *                             down<br> 3 -- link up<br> 4 -- authentification failure<br> 5 -- EGP neighbor
      *                             loss<br> 6 -- enterprise specific<br>
      */
     public void setGenericTrapType(final int genericTrapTypeValue) {
-        //to avoid confusing the Log4J framework code that calls this setter
-        //as part of the configuration process, I don't enforce the pre-
-        //condition (which is "0 >= genericTrapTypeValue <= 6") here.  You
-        //can pass in any value you like.  However, a value that is outside
-        //of the allowed range will result in a deformed SNMP PDU -- such
-        //a PDU, in turn, will be silently ignored by most SNMP trap
-        //receivers -- IOW, the trap will go to dev>null.
         genericTrapType = genericTrapTypeValue;
     }
 

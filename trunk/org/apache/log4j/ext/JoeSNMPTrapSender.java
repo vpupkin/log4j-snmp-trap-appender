@@ -49,11 +49,10 @@
 
 package org.apache.log4j.ext;
 
-import java.lang.*;
-import java.net.*;
-
-import org.apache.log4j.helpers.*;
+import org.apache.log4j.helpers.LogLog;
 import org.opennms.protocols.snmp.*;
+
+import java.net.InetAddress;
 
 /**
  * This class makes use of the JoeSNMP library to implement the underlying SNMP
@@ -110,9 +109,7 @@ import org.opennms.protocols.snmp.*;
  * 2003-05-24: mwm : minor changes to accomodate the changes in the SnmpTrapSenderFacade interface.<br>
  *
  * @author Mark Masterson (<a href="mailto:m.masterson@computer.org">m.masterson@computer.org</a>)<br>
- * <a href="http://www.m2technologies.net/">http://www.m2technologies.net/</a><br>
  */
-
 public class JoeSNMPTrapSender implements SnmpTrapHandler, SnmpTrapSenderFacade {
 
     private String managementHost = "127.0.0.1";
@@ -120,14 +117,14 @@ public class JoeSNMPTrapSender implements SnmpTrapHandler, SnmpTrapSenderFacade 
     private String enterpriseOID = "1.3.6.1.2.1.1.2.0";
     private String localIPAddress = "127.0.0.1";
     private int localTrapSendPort = 161;
-    private int genericTrapType = 0;
+    private int genericTrapType;
     private int specificTrapType = 6;
     private String applicationTrapOID = "1.3.6.1.2.1.1.2.0.0.0.0";
     private String communityString = "public";
-    private long sysUpTime = 0;
-    private SnmpPduTrap pdu = null;
-    private SnmpTrapSession session = null;
-    private boolean isInitialized = false;
+    private long sysUpTime;
+    private SnmpPduTrap pdu;
+    private SnmpTrapSession session;
+    private boolean isInitialized;
     private int trapVersion = 1;
 
     /**
@@ -137,9 +134,8 @@ public class JoeSNMPTrapSender implements SnmpTrapHandler, SnmpTrapSenderFacade 
     }
 
     /**
-     * Skeleton method, implemented only to satisfy the requirements of the
-     * JoeSNMP API.  Does nothing except spit out an error message via
-     * LogLog.
+     * Skeleton method, implemented only to satisfy the requirements of the JoeSNMP API.  Does nothing except spit out
+     * an error message via LogLog.
      */
     public void snmpReceivedTrap(final SnmpTrapSession parm1,
                                  final InetAddress parm2,
@@ -151,9 +147,8 @@ public class JoeSNMPTrapSender implements SnmpTrapHandler, SnmpTrapSenderFacade 
     }
 
     /**
-     * Skeleton method, implemented only to satisfy the requirements of the
-     * JoeSNMP API.  Does nothing except spit out an error message via
-     * LogLog.
+     * Skeleton method, implemented only to satisfy the requirements of the JoeSNMP API.  Does nothing except spit out
+     * an error message via LogLog.
      */
     public void snmpReceivedTrap(final SnmpTrapSession parm1,
                                  final InetAddress parm2,
@@ -165,9 +160,8 @@ public class JoeSNMPTrapSender implements SnmpTrapHandler, SnmpTrapSenderFacade 
     }
 
     /**
-     * Skeleton method, implemented only to satisfy the requirements of the
-     * JoeSNMP API.  Does nothing except spit out an error message via
-     * LogLog.
+     * Skeleton method, implemented only to satisfy the requirements of the JoeSNMP API.  Does nothing except spit out
+     * an error message via LogLog.
      */
     public void snmpTrapSessionError(final SnmpTrapSession parm1,
                                      final int parm2,
@@ -175,33 +169,33 @@ public class JoeSNMPTrapSender implements SnmpTrapHandler, SnmpTrapSenderFacade 
         LogLog.error("There was a fatal error at the SNMP session layer.");
     }
 
-    public void initialize(SNMPTrapAppender appender) {
-        this.managementHost = appender.getManagementHost();
-        this.managementHostTrapListenPort = appender.getManagementHostTrapListenPort();
-        this.enterpriseOID = appender.getEnterpriseOID();
-        this.localIPAddress = appender.getLocalIPAddress();
-        this.localTrapSendPort = appender.getLocalTrapSendPort();
-        this.communityString = appender.getCommunityString();
-        this.sysUpTime = appender.getSysUpTime();
-        this.genericTrapType = appender.getGenericTrapType();
-        this.specificTrapType = appender.getSpecificTrapType();
-        this.trapVersion = appender.getTrapVersion();
-        this.pdu = new SnmpPduTrap();
-        this.isInitialized = true;
+    public void initialize(final SNMPTrapAppender appender) {
+        managementHost = appender.getManagementHost();
+        managementHostTrapListenPort = appender.getManagementHostTrapListenPort();
+        enterpriseOID = appender.getEnterpriseOID();
+        localIPAddress = appender.getLocalIPAddress();
+        localTrapSendPort = appender.getLocalTrapSendPort();
+        communityString = appender.getCommunityString();
+        sysUpTime = appender.getSysUpTime();
+        genericTrapType = appender.getGenericTrapType();
+        specificTrapType = appender.getSpecificTrapType();
+        trapVersion = appender.getTrapVersion();
+        pdu = new SnmpPduTrap();
+        isInitialized = true;
     }
 
     public void addTrapMessageVariable(final String applicationTrapOIDValue,
                                        final String value) {
         //check pre-condition
-        if (!this.isInitialized) {
+        if (!isInitialized) {
             LogLog.error("The initialize() method must be called before calling addTrapMessageVariable()");
             return;
         }
         // add OID
         if (applicationTrapOIDValue != null) {
-            this.applicationTrapOID = applicationTrapOIDValue;
+            applicationTrapOID = applicationTrapOIDValue;
         }
-        final SnmpObjectId oid = new SnmpObjectId(this.applicationTrapOID);
+        final SnmpObjectId oid = new SnmpObjectId(applicationTrapOID);
         // set the type
         final SnmpOctetString msg = new SnmpOctetString();
         msg.setString(value);
@@ -210,42 +204,45 @@ public class JoeSNMPTrapSender implements SnmpTrapHandler, SnmpTrapSenderFacade 
             //create varbind
             final SnmpVarBind varbind = new SnmpVarBind(oid, msg);
             // add variable binding
-            this.pdu.addVarBind(varbind);
+            pdu.addVarBind(varbind);
         } catch (Exception e) {
-            LogLog.error("Unexpected error creating SNMP bind variable: " + oid + " with value: " + value, e);
+            LogLog.error(new StringBuffer().append("Unexpected error creating SNMP bind variable: ")
+                    .append(oid)
+                    .append(" with value: ")
+                    .append(value).toString(), e);
         }
     }
 
     public void sendTrap() {
         //check pre-condition
-        if (!this.isInitialized) {
+        if (!isInitialized) {
             LogLog.error("The initialize() method must be called before calling sendTrap()");
             return;
         }
         //open the session, set the PDU's values and send the packet
         try {
-            this.session = new SnmpTrapSession(this, this.localTrapSendPort);
-            final SnmpPeer peer = new SnmpPeer(InetAddress.getByName(this.managementHost));
-            peer.setPort(this.managementHostTrapListenPort);
+            session = new SnmpTrapSession(this, localTrapSendPort);
+            final SnmpPeer peer = new SnmpPeer(InetAddress.getByName(managementHost));
+            peer.setPort(managementHostTrapListenPort);
             final SnmpParameters snmpParms = new SnmpParameters();
-            snmpParms.setReadCommunity(this.communityString);
-            if (2 == this.trapVersion) {
+            snmpParms.setReadCommunity(communityString);
+            if (2 == trapVersion) {
                 snmpParms.setVersion(SnmpSMI.SNMPV2);
             } else {
                 snmpParms.setVersion(SnmpSMI.SNMPV1);
             }
             peer.setParameters(snmpParms);
-            if (this.pdu != null) {
-                this.pdu.setEnterprise(this.enterpriseOID);
+            if (null != pdu) {
+                pdu.setEnterprise(enterpriseOID);
                 final SnmpOctetString addr = new SnmpOctetString();
-                addr.setString(InetAddress.getByName(this.localIPAddress).getAddress());
+                addr.setString(InetAddress.getByName(localIPAddress).getAddress());
                 final SnmpIPAddress ipAddr = new SnmpIPAddress(addr);
-                this.pdu.setAgentAddress(ipAddr);
-                this.pdu.setGeneric(this.genericTrapType);
-                this.pdu.setSpecific(this.specificTrapType);
-                this.pdu.setTimeStamp(this.sysUpTime);
-                if (this.pdu.getLength() > 0) {
-                    this.session.send(peer, this.pdu);
+                pdu.setAgentAddress(ipAddr);
+                pdu.setGeneric(genericTrapType);
+                pdu.setSpecific(specificTrapType);
+                pdu.setTimeStamp(sysUpTime);
+                if (0 < pdu.getLength()) {
+                    session.send(peer, pdu);
                 }
             }
         } catch (SnmpPduEncodingException ex) {
@@ -255,7 +252,7 @@ public class JoeSNMPTrapSender implements SnmpTrapHandler, SnmpTrapSenderFacade 
         } finally {
             //this is running on a seperate thread, so make sure it gets
             //cleaned up...
-            if (null != this.session && !this.session.isClosed()) this.session.close();
+            if (null != session && !session.isClosed()) session.close();
         }
     }
 }

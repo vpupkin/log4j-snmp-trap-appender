@@ -1,34 +1,27 @@
 package org.apache.log4j.ext;
 
-import org.apache.log4j.*;
-import org.apache.log4j.helpers.*;
-
-/**
- * Title:
- * Description:
- * Copyright:    Copyright (c) 2001
- * Company:
- * @author
- * @version 1.0
- */
+import org.apache.log4j.Category;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.helpers.LogLog;
 
 class SnmpTrapAppenderTest {
 
     private static final Category trace = Category.getInstance(SnmpTrapAppenderTest.class.getName());
     private static boolean log4jInitialized = false;
 
-    public SnmpTrapAppenderTest() {
+    private SnmpTrapAppenderTest() {
         final String sFile = "/etc/snmpTrapAppenderTestConfig.xml";
         initLogging(sFile);
-        if (!log4jInitialized)
-            LogLog.error("[SnmpTrapAppenderTest],  Logging initialization error.  Config file=" + sFile + " -- Aborting.");
-        else {
+        if (log4jInitialized) {
             trace.debug("Here's a debug message");
             trace.error("Whoa, had an error there");
             trace.info("Here's some info about that");
             trace.fatal("Help! I'm dying out here!");
             trace.fatal("Here's an Exception!", new Exception("Exception message"));
-        }
+        } else LogLog.error(new StringBuffer().append(
+                "[SnmpTrapAppenderTest],  Logging initialization error.  Config file=")
+                .append(sFile)
+                .append(" -- Aborting.").toString());
     }
 
     public static void initLogging(final String configFile) {

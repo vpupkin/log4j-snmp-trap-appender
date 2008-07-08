@@ -50,8 +50,14 @@ package org.apache.log4j.ext;
 
 import org.apache.log4j.helpers.LogLog;
 
-import java.util.*;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Title: NetSnmpCommandLineTrapSender<br>
@@ -95,7 +101,6 @@ import java.io.*;
  * -Dlog4j.ext.snmpTrapAppender.netSnmp.diagnostic="true"</code><br>
  * <p>
  * @author Mark Masterson (<a href="mailto:m.masterson@computer.org">m.masterson@computer.org</a>)<br>
- * <a href="http://www.m2technologies.net/">http://www.m2technologies.net/</a><br>
  * @version 1.0.1<br>
  * 2002-11-01<br>
  * changes ---<br>
@@ -106,7 +111,8 @@ import java.io.*;
  */
 public class NetSnmpCommandLineTrapSender implements SnmpTrapSenderFacade {
 
-    private static final String NET_SNMP_CMD_LINE_TRAP_SENDER_DIAGNOSTIC_PROPERTY = "log4j.ext.snmpTrapAppender.netSnmp.diagnostic";
+    private static final String NET_SNMP_CMD_LINE_TRAP_SENDER_DIAGNOSTIC_PROPERTY
+            = "log4j.ext.snmpTrapAppender.netSnmp.diagnostic";
     private static final String NET_SNMP_BIN_PATH_PROPERTY = "log4j.ext.snmpTrapAppender.netSnmp.binPath";
     private static final String NET_SNMP_MIBS_PATH_PROPERTY = "log4j.ext.snmpTrapAppender.netSnmp.mibsPath";
     private static final String NET_SNMP_BIN_PATH_DEFAULT = "/usr/local/bin/";
@@ -114,33 +120,33 @@ public class NetSnmpCommandLineTrapSender implements SnmpTrapSenderFacade {
     private String managementHost = "127.0.0.1";
     private String enterpriseOID = "1.3.6.1.2.1.1.2.0";
     private String localIPAddress = "127.0.0.1";
-    private int genericTrapType = 0;
+    private int genericTrapType;
     private int specificTrapType = 6;
     private String communityString = "public";
-    private long sysUpTime = 0;
-    private boolean isInitialized = false;
+    private long sysUpTime;
+    private boolean isInitialized;
     private List bindVariables;
 
-    public void initialize(SNMPTrapAppender appender) {
-        this.managementHost = appender.getManagementHost();
-        this.enterpriseOID = appender.getEnterpriseOID();
-        this.localIPAddress = appender.getLocalIPAddress();
-        this.communityString = appender.getCommunityString();
-        this.sysUpTime = appender.getSysUpTime();
-        this.genericTrapType = appender.getGenericTrapType();
-        this.specificTrapType = appender.getSpecificTrapType();
-        this.bindVariables = new ArrayList();
-        this.isInitialized = true;
+    public void initialize(final SNMPTrapAppender appender) {
+        managementHost = appender.getManagementHost();
+        enterpriseOID = appender.getEnterpriseOID();
+        localIPAddress = appender.getLocalIPAddress();
+        communityString = appender.getCommunityString();
+        sysUpTime = appender.getSysUpTime();
+        genericTrapType = appender.getGenericTrapType();
+        specificTrapType = appender.getSpecificTrapType();
+        bindVariables = new ArrayList();
+        isInitialized = true;
     }
 
     public void addTrapMessageVariable(final String applicationTrapOIDValue,
                                        final String value) {
         //check pre-condition
-        if (!this.isInitialized) {
+        if (!isInitialized) {
             LogLog.error("The initialize() method must be called before calling addTrapMessageVariable()");
             return;
         }
-        this.bindVariables.add(new BindVariable(applicationTrapOIDValue, value));
+        bindVariables.add(new BindVariable(applicationTrapOIDValue, value));
     }
 
     public void sendTrap() {
@@ -152,38 +158,36 @@ public class NetSnmpCommandLineTrapSender implements SnmpTrapSenderFacade {
             LogLog.error(mibsPath);
         }
         final int index = 0;
-        final String[] paramsX = this.sizeParameterArray();
+        final String[] paramsX = sizeParameterArray();
         try {
-            paramsX[index] = binPath + "snmptrap";
-            this.fillParamsArray(paramsX, index, mibsPath);
-            if (diagnosticFlag) LogLog.error("Command line array contains: " + Arrays.asList(paramsX));
+            paramsX[index] = new StringBuffer().append(binPath).append("snmptrap").toString();
+            fillParamsArray(paramsX, index, mibsPath);
+            if (diagnosticFlag) LogLog.error(new StringBuffer().append("Command line array contains: ")
+                    .append(Arrays.asList(paramsX)).toString());
             final Process einProcess = Runtime.getRuntime().exec(paramsX, null, new File(binPath));
-            this.handleProcessStream(new BufferedReader(new InputStreamReader(einProcess.getInputStream())), diagnosticFlag);
-            this.handleProcessStream(new BufferedReader(new InputStreamReader(einProcess.getErrorStream())), diagnosticFlag);
+            handleProcessStream(new BufferedReader(new InputStreamReader(einProcess.getInputStream())), diagnosticFlag);
+            handleProcessStream(new BufferedReader(new InputStreamReader(einProcess.getErrorStream())), diagnosticFlag);
             final int rc = einProcess.waitFor();
             if (0 != rc) {
                 LogLog.error("Error executing snmptrap!");
             }
-        } catch (IOException e) {
-            LogLog.error("Error executing snmptrap!", e);
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             LogLog.error("Error executing snmptrap!", e);
         }
     }
 
     private String[] sizeParameterArray() {
         final int mandatoryParameterCount = 9;
-        final int variableParameterCount = 3 * this.bindVariables.size();
+        final int variableParameterCount = 3 * bindVariables.size();
         return new String[mandatoryParameterCount + variableParameterCount];
     }
 
-    private static void handleProcessStream(final BufferedReader bufferedInputStreamReader, final boolean diagnosticFlag)
+    private static void handleProcessStream(final BufferedReader bufferedInputStreamReader,
+                                            final boolean diagnosticFlag)
             throws IOException, InterruptedException {
-        for (int i = 0; i < 99; i++) {
-            if (!bufferedInputStreamReader.ready())
-                Thread.sleep(100);
-            else
-                break;
+        for (int i = 0; 99 > i; i++) {
+            if (bufferedInputStreamReader.ready()) break;
+            else Thread.sleep(100);
         }
         while (bufferedInputStreamReader.ready()) {
             if (diagnosticFlag) {
@@ -196,37 +200,38 @@ public class NetSnmpCommandLineTrapSender implements SnmpTrapSenderFacade {
     }
 
     private void fillParamsArray(final String[] paramsX, int index, final String mibsPath) {
-        paramsX[++index] = "-M " + mibsPath;
-        paramsX[++index] = this.managementHost;
-        paramsX[++index] = this.communityString;
-        paramsX[++index] = "." + this.enterpriseOID;
-        paramsX[++index] = this.localIPAddress;
-        paramsX[++index] = Integer.toString(this.genericTrapType);
-        paramsX[++index] = Integer.toString(this.specificTrapType);
-        paramsX[++index] = Long.toString(this.sysUpTime);
-        for (Iterator varsIt = this.bindVariables.iterator(); varsIt.hasNext();) {
+        paramsX[++index] = new StringBuffer().append("-M ").append(mibsPath).toString();
+        paramsX[++index] = managementHost;
+        paramsX[++index] = communityString;
+        paramsX[++index] = new StringBuffer().append('.').append(enterpriseOID).toString();
+        paramsX[++index] = localIPAddress;
+        paramsX[++index] = Integer.toString(genericTrapType);
+        paramsX[++index] = Integer.toString(specificTrapType);
+        paramsX[++index] = Long.toString(sysUpTime);
+        for (Iterator varsIt = bindVariables.iterator(); varsIt.hasNext();) {
             final BindVariable tmpVar = (BindVariable) varsIt.next();
-            paramsX[++index] = "." + tmpVar.getOid();
+            paramsX[++index] = new StringBuffer().append('.').append(tmpVar.getOid()).toString();
             paramsX[++index] = "s";
-            paramsX[++index] = "\"" + tmpVar.getValue() + "\"";
+            paramsX[++index] = new StringBuffer().append('\"').append(tmpVar.getValue()).append('\"').toString();
         }
     }
 
     private static class BindVariable {
+
         private final String oid;
         private final String value;
 
-        public BindVariable(final String oidValue, final String variableValue) {
-            this.oid = oidValue;
-            this.value = variableValue;
+        BindVariable(final String oidValue, final String variableValue) {
+            oid = oidValue;
+            value = variableValue;
         }
 
         public String getOid() {
-            return this.oid;
+            return oid;
         }
 
         public String getValue() {
-            return this.value;
+            return value;
         }
     }
 }

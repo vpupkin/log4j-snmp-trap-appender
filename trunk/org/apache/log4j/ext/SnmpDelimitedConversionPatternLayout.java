@@ -97,7 +97,6 @@ import java.util.StringTokenizer;
  * that it uses to do so, it seems a better fit as a responsibility of this class.<br>
  *
  * @author Mark Masterson (<a href="mailto:m.masterson@computer.org">m.masterson@computer.org</a>),
- * <a href="http://www.m2technologies.net/">http://www.m2technologies.net/</a>
  * @author <br>Matt Monks (<a href="mailto:Matthew.Monks@netdecisions.com">Matthew.Monks@netdecisions.com</a>)
  */
 public class SnmpDelimitedConversionPatternLayout extends PatternLayout {
@@ -106,9 +105,9 @@ public class SnmpDelimitedConversionPatternLayout extends PatternLayout {
     private String varDelim = ";";
 
     /**
-     * Gets the value of the delimiter used in the conversion pattern string to delimit
-     * value pairs that should be added as separate VarBind variables to the trap.
-     * Default is "/".
+     * Gets the value of the delimiter used in the conversion pattern string to delimit value pairs that should be added
+     * as separate VarBind variables to the trap. Default is "/".
+     *
      * @return the delimiter character used
      */
     public String getValuePairDelim() {
@@ -116,19 +115,19 @@ public class SnmpDelimitedConversionPatternLayout extends PatternLayout {
     }
 
     /**
-     * Sets the value of the delimiter used in the conversion pattern string to delimit
-     * value pairs that should be added as separate VarBind variables to the trap.
-     * Default is "/".
-     * @param valuePairDelim
+     * Sets the value of the delimiter used in the conversion pattern string to delimit value pairs that should be added
+     * as separate VarBind variables to the trap. Default is "/".
+     *
+     * @param valuePairDelim delimiter value pairs
      */
     public void setValuePairDelim(final String valuePairDelim) {
         this.valuePairDelim = valuePairDelim;
     }
 
     /**
-     * Gets the value of the delimiter used in the conversion pattern string to delimit
-     * the key and value in a value pair embedded within the string.
-     * Default is ";".
+     * Gets the value of the delimiter used in the conversion pattern string to delimit the key and value in a value
+     * pair embedded within the string. Default is ";".
+     *
      * @return the delimiter character used
      */
     public String getVarDelim() {
@@ -136,10 +135,10 @@ public class SnmpDelimitedConversionPatternLayout extends PatternLayout {
     }
 
     /**
-     * Sets the value of the delimiter used in the conversion pattern string to delimit
-     * the key and value in a value pair embedded within the string.
-     * Default is ";".
-     * @param varDelim
+     * Sets the value of the delimiter used in the conversion pattern string to delimit the key and value in a value
+     * pair embedded within the string. Default is ";".
+     *
+     * @param varDelim delimiter within value pairs
      */
     public void setVarDelim(final String varDelim) {
         this.varDelim = varDelim;
@@ -147,6 +146,7 @@ public class SnmpDelimitedConversionPatternLayout extends PatternLayout {
 
     /**
      * Override this to insulate us from potential changes to the super class.
+     *
      * @return true
      */
     public boolean ignoresThrowable() {
@@ -154,11 +154,11 @@ public class SnmpDelimitedConversionPatternLayout extends PatternLayout {
     }
 
     /**
-     * Breaks the conversion pattern string itself up and, using the tokens thus found, builds distinct
-     * VarBinds out of the OID's <b>embedded</b> in the conversion pattern string and the escaped elements of
-     * the LoggingEvent.
-     * @param event
-     * @param out
+     * Breaks the conversion pattern string itself up and, using the tokens thus found, builds distinct VarBinds out of
+     * the OID's <b>embedded</b> in the conversion pattern string and the escaped elements of the LoggingEvent.
+     *
+     * @param event to log
+     * @param out   logging target
      */
     public void formatMultipleVarBinds(final LoggingEvent event, final SnmpTrapSenderFacade out) {
         final String pattern = this.getConversionPattern();
