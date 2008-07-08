@@ -49,13 +49,14 @@
 
 package org.apache.log4j.ext;
 
-import org.apache.log4j.helpers.*;
 import ca.wengsoft.snmp.Core.*;
+import org.apache.log4j.helpers.LogLog;
 
 /**
  * Title: WengsoftSNMPTrapSender<br>
  * Description: This class makes use of the Wengsoft SNMP library to implement
  * the underlying SNMP protocol(s).<br>
+ * <p>This is the simplest of the sender implementations, and has proven to be the most reliable.</p>
  *
  * You can get a copy of Wengsoft SNMP <a href="http://www.simpleweb.org/
  * software/select_obj.php?orderBy=package&oldorderBy=package&orderDir=
@@ -76,7 +77,6 @@ import ca.wengsoft.snmp.Core.*;
  * </pre>
  * <p>
  * @author Mark Masterson (<a href="mailto:m.masterson@computer.org">m.masterson@computer.org</a>)<br>
- * <a href="http://www.m2technologies.net/">http://www.m2technologies.net/</a><br>
  * @version 1.0.2<br>
  * 2002-10-03<br>
  * changes ---<br>
@@ -87,15 +87,14 @@ import ca.wengsoft.snmp.Core.*;
  *
  * 2003-05-24: mwm : minor changes to accomodate the changes in the SnmpTrapSenderFacade interface.<br>
  */
-
 public class WengsoftSNMPTrapSender implements SnmpTrapSenderFacade {
 
     private String managementHost = "127.0.0.1";
     private int managementHostTrapListenPort = 162;
     private String enterpriseOID = "1.3.6.1.2.1.1.2.0";
-    private long sysUpTime = 0;
+    private long sysUpTime;
     private int trapVersion = 2;
-    private boolean isInitialized = false;
+    private boolean isInitialized;
     private SnmpMessage snmpMessage;
     private SnmpGetSetPdu trapPdu;
 
@@ -109,7 +108,7 @@ public class WengsoftSNMPTrapSender implements SnmpTrapSenderFacade {
     public WengsoftSNMPTrapSender() {
     }
 
-    public void initialize(SNMPTrapAppender appender) {
+    public void initialize(final SNMPTrapAppender appender) {
         this.managementHost = appender.getManagementHost();
         this.managementHostTrapListenPort = appender.getManagementHostTrapListenPort();
         this.enterpriseOID = appender.getEnterpriseOID();
